@@ -12,6 +12,8 @@ import {
   LogOut,
   Menu,
   X,
+  Settings,
+  User,
 } from "lucide-react";
 import logo from "@/assets/img/MARK-GADGETS.png";
 import { signOut } from "next-auth/react";
@@ -24,6 +26,7 @@ const Sidebar = () => {
   useEffect(() => {
     if (pathname.includes("customers")) setOpenMenu("customers");
     if (pathname.includes("inventory")) setOpenMenu("inventory");
+    if (pathname.includes("settings")) setOpenMenu("settings");
   }, [pathname]);
 
   const toggleMenu = (menu: string) => {
@@ -36,24 +39,12 @@ const Sidebar = () => {
 
   return (
     <>
-      {/* 🔥 Mobile Navbar (unchanged) */}
-      <div
-        className="lg:hidden fixed top-2 left-2 right-2 z-40 
-        bg-white/80 backdrop-blur-md 
-        px-4 py-3 flex items-center justify-between 
-        border border-gray-200 rounded-2xl"
-      >
-        <button
-          onClick={() => setIsOpen(true)}
-          className="p-2 rounded-xl hover:bg-gray-100 transition"
-        >
+      {/* Mobile Navbar */}
+      <div className="lg:hidden fixed top-2 left-2 right-2 z-40 bg-white/80 backdrop-blur-md px-4 py-3 flex items-center justify-between border border-gray-200 rounded-2xl">
+        <button onClick={() => setIsOpen(true)} className="p-2 rounded-xl hover:bg-gray-100 transition">
           <Menu size={22} />
         </button>
-
-        <h1 className="text-[15px] font-semibold tracking-wide">
-          Dashboard
-        </h1>
-
+        <h1 className="text-[15px] font-semibold tracking-wide">Dashboard</h1>
         <div className="w-8" />
       </div>
 
@@ -66,98 +57,37 @@ const Sidebar = () => {
       />
 
       {/* Sidebar */}
-      <aside
-        className={`
-        fixed lg:static z-50 top-0 left-0 h-full
-        w-72 md:w-64
-        flex flex-col bg-white p-2 shadow-sm border border-gray-100
-
-        rounded-none lg:rounded-[2.5rem]
-
-        transform transition-all duration-300 ease-out
-
-        ${
-          isOpen
-            ? "translate-x-0 opacity-100 scale-100"
-            : "-translate-x-full opacity-0 scale-95"
-        }
-
-        lg:translate-x-0 lg:opacity-100 lg:scale-100
-      `}
-      >
-        {/* ✅ Centered Logo */}
+      <aside className={`fixed lg:static z-50 top-0 left-0 h-full w-72 md:w-64 flex flex-col bg-white p-2 shadow-sm border border-gray-100 rounded-none lg:rounded-[2.5rem] transform transition-all duration-300 ease-out ${isOpen ? "translate-x-0 opacity-100 scale-100" : "-translate-x-full opacity-0 scale-95"} lg:translate-x-0 lg:opacity-100 lg:scale-100`}>
+        
         <div className="relative flex items-center justify-center p-4 border-b border-gray-100">
           <Image src={logo} alt="logo" width={120} height={45} />
-
-          {/* Close button (mobile) */}
-          <button
-            onClick={() => setIsOpen(false)}
-            className="lg:hidden absolute right-4 p-2 rounded-xl hover:bg-gray-100 transition"
-          >
+          <button onClick={() => setIsOpen(false)} className="lg:hidden absolute right-4 p-2 rounded-xl hover:bg-gray-100 transition">
             <X size={20} />
           </button>
         </div>
 
-        {/* Menu */}
-        <nav className="flex-1 px-3 space-y-3 overflow-y-auto">
-          {/* Dashboard */}
-          <Link
-            href="/dashboard"
-            onClick={() => setIsOpen(false)}
-            className={`flex items-center gap-4 px-6 py-4 rounded-2xl ${
-              pathname === "/dashboard" ? activeClass : normalClass
-            }`}
-          >
+        <nav className="flex-1 px-3 space-y-3 overflow-y-auto mt-4">
+          <Link href="/dashboard" onClick={() => setIsOpen(false)} className={`flex items-center gap-4 px-6 py-4 rounded-2xl ${pathname === "/dashboard" ? activeClass : normalClass}`}>
             <LayoutDashboard size={22} />
             <span className="text-[16px]">Dashboard</span>
           </Link>
 
           {/* Customers */}
           <div className="space-y-1">
-            <button
-              onClick={() => toggleMenu("customers")}
-              className={`w-full flex items-center justify-between px-6 py-4 rounded-2xl ${
-                openMenu === "customers"
-                  ? "text-black font-semibold bg-white/40"
-                  : normalClass
-              }`}
-            >
+            <button onClick={() => toggleMenu("customers")} className={`w-full flex items-center justify-between px-6 py-4 rounded-2xl ${openMenu === "customers" ? "text-black font-semibold bg-white/40" : normalClass}`}>
               <div className="flex items-center gap-4">
                 <Users size={22} />
                 <span className="text-[16px]">Customers</span>
               </div>
-              <ChevronDown
-                size={18}
-                className={`transition-transform ${
-                  openMenu === "customers" ? "rotate-180" : ""
-                }`}
-              />
+              <ChevronDown size={18} className={`transition-transform ${openMenu === "customers" ? "rotate-180" : ""}`} />
             </button>
-
             {openMenu === "customers" && (
               <div className="mt-1 ml-4 space-y-1">
-                <Link
-                  href="/dashboard/customers/all"
-                  onClick={() => setIsOpen(false)}
-                  className={`flex items-center gap-3 px-6 py-3 rounded-xl text-sm ${
-                    pathname === "/dashboard/customers/all"
-                      ? "bg-[#f9db3d]/20 text-black font-bold"
-                      : "text-gray-500 hover:text-black"
-                  }`}
-                >
+                <Link href="/dashboard/customers/all" onClick={() => setIsOpen(false)} className={`flex items-center gap-3 px-6 py-3 rounded-xl text-sm ${pathname === "/dashboard/customers/all" ? activeClass : "text-gray-500 hover:text-black"}`}>
                   <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />
                   All Customers
                 </Link>
-
-                <Link
-                  href="/dashboard/customers/add"
-                  onClick={() => setIsOpen(false)}
-                  className={`flex items-center gap-3 px-6 py-3 rounded-xl text-sm ${
-                    pathname === "/dashboard/customers/add"
-                      ? "bg-[#f9db3d]/20 text-black font-bold"
-                      : "text-gray-500 hover:text-black"
-                  }`}
-                >
+                <Link href="/dashboard/customers/add" onClick={() => setIsOpen(false)} className={`flex items-center gap-3 px-6 py-3 rounded-xl text-sm ${pathname === "/dashboard/customers/add" ? activeClass : "text-gray-500 hover:text-black"}`}>
                   <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />
                   Add Customer
                 </Link>
@@ -166,36 +96,58 @@ const Sidebar = () => {
           </div>
 
           {/* Inventory */}
-          <button
-            onClick={() => toggleMenu("inventory")}
-            className={`w-full flex items-center justify-between px-6 py-4 rounded-2xl ${
-              openMenu === "inventory"
-                ? "text-black font-semibold bg-white/40"
-                : normalClass
-            }`}
-          >
+          <button onClick={() => toggleMenu("inventory")} className={`w-full flex items-center justify-between px-6 py-4 rounded-2xl ${openMenu === "inventory" ? "text-black font-semibold bg-white/40" : normalClass}`}>
             <div className="flex items-center gap-4">
               <Boxes size={22} />
               <span className="text-[16px]">Inventory</span>
             </div>
-            <ChevronDown
-              size={18}
-              className={`transition-transform ${
-                openMenu === "inventory" ? "rotate-180" : ""
-              }`}
-            />
+            <ChevronDown size={18} className={`transition-transform ${openMenu === "inventory" ? "rotate-180" : ""}`} />
           </button>
+
+          {/* Settings Section */}
+          <div className="space-y-1">
+            <button onClick={() => toggleMenu("settings")} className={`w-full flex items-center justify-between px-6 py-4 rounded-2xl ${openMenu === "settings" ? "text-black font-semibold bg-white/40" : normalClass}`}>
+              <div className="flex items-center gap-4">
+                <Settings size={22} />
+                <span className="text-[16px]">Settings</span>
+              </div>
+              <ChevronDown size={18} className={`transition-transform ${openMenu === "settings" ? "rotate-180" : ""}`} />
+            </button>
+
+            {openMenu === "settings" && (
+              <div className="mt-1 ml-4 space-y-1">
+                {/* ✅ Profile (Username) - One Line Fix */}
+                <Link
+                  href="/settings/username"
+                  onClick={() => setIsOpen(false)}
+                  className={`flex items-center gap-3 px-6 py-3 rounded-xl text-sm transition-all flex-nowrap whitespace-nowrap ${
+                    pathname === "/settings/username" ? activeClass : "text-gray-500 hover:text-black"
+                  }`}
+                >
+                  <User size={18} className="shrink-0" />
+                  <span>Profile (Username)</span>
+                </Link>
+
+                <Link
+                  href="/settings/password"
+                  onClick={() => setIsOpen(false)}
+                  className={`flex items-center gap-3 px-6 py-3 rounded-xl text-sm transition-all flex-nowrap whitespace-nowrap ${
+                    pathname === "/settings/password" ? activeClass : "text-gray-500 hover:text-black"
+                  }`}
+                >
+                  <User size={18} className="shrink-0" />
+                  <span>Update Password</span>
+                </Link>
+              </div>
+            )}
+          </div>
         </nav>
 
-        {/* Logout */}
         <div className="p-6 border-t border-gray-200/50 mt-auto">
- <button 
-  onClick={() => signOut({ callbackUrl: "/login" })} 
-  className="w-full flex items-center gap-4 px-6 py-4 rounded-2xl text-red-500 hover:bg-red-50 transition-all font-semibold"
->
-  <LogOut size={22} />
-  <span className="text-[16px]">Logout</span>
-</button>
+          <button onClick={() => signOut({ callbackUrl: "/login" })} className="w-full flex items-center gap-4 px-6 py-4 rounded-2xl text-red-500 hover:bg-red-50 transition-all font-semibold">
+            <LogOut size={22} />
+            <span className="text-[16px]">Logout</span>
+          </button>
         </div>
       </aside>
     </>
