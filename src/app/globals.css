@@ -3,3 +3,39 @@
 body {
   background-color: white 
 }
+/* SweetAlert Custom Button Styles */
+/* SweetAlert Custom Button Design to match your theme */
+.swal-confirm-btn {
+  background-color: #f9db3d !important;
+  color: black !important;
+  font-weight: 700 !important;
+  font-size: 0.875rem !important; /* text-sm */
+  padding: 12px 24px !important; /* py-3 px-6 */
+  border-radius: 0.5rem !important; /* rounded-lg */
+  border: none !important;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1) !important; /* shadow-md */
+  transition: all 0.2s !important;
+}
+
+.swal-confirm-btn:hover {
+  background-color: #e6c930 !important; /* hover:bg-[#e6c930] */
+}
+
+.swal-confirm-btn:active {
+  transform: scale(0.95) !important; /* active:scale-95 */
+}
+
+.swal-cancel-btn {
+  background-color: #ef4444 !important; /* Red for cancel */
+  color: white !important; /* Cancel text can be white for contrast, or black if you prefer */
+  font-weight: 700 !important;
+  font-size: 0.875rem !important;
+  padding: 12px 24px !important;
+  border-radius: 0.5rem !important;
+  border: none !important;
+  transition: all 0.2s !important;
+}
+
+.swal-cancel-btn:active {
+  transform: scale(0.95) !important;
+}

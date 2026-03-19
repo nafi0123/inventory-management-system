@@ -1,4 +1,3 @@
-// src/app/(withDashboardLayout)/dashboard/page.tsx
 
 import React from 'react';
 
