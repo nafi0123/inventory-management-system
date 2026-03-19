@@ -1,18 +1,18 @@
 import connectDB from "@/app/lib/db";
-import bcrypt from "bcryptjs"; // এখানে 'bcrypt' এর বদলে 'bcryptjs' দিন
+import bcrypt from "bcryptjs";
 import { User } from "@/app/models/User";
 import dotenv from "dotenv";
 
-dotenv.config(); // এটি অবশ্যই থাকতে হবে যাতে .env থেকে MONGODB_URI পায়
+dotenv.config();
 
-const seed = async () => {
+const seedAdmin = async () => {
   try {
     await connectDB();
 
-    const existing = await User.findOne({ username: "admin" });
-    if (existing) {
+    const existingAdmin = await User.findOne({ username: "admin" });
+    if (existingAdmin) {
       console.log("⚠️ Admin already exists");
-      process.exit();
+      process.exit(0);
     }
 
     const hashedPassword = await bcrypt.hash("admin123", 10);
@@ -20,15 +20,16 @@ const seed = async () => {
     await User.create({
       username: "admin",
       password: hashedPassword,
-      role: "admin"
+      role: "admin",
+      email: process.env.ADMIN_EMAIL || "", // optional email from .env
     });
 
     console.log("✅ Admin created successfully!");
-    process.exit();
+    process.exit(0);
   } catch (error) {
     console.error("❌ Error seeding admin:", error);
     process.exit(1);
   }
 };
 
-seed();
+seedAdmin();

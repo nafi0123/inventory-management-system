@@ -9,29 +9,41 @@ const handler = NextAuth({
     CredentialsProvider({
       name: "Credentials",
       credentials: {
-        username: { label: "Username", type: "text" },
+        identifier: { label: "Username or Email", type: "text" },
         password: { label: "Password", type: "password" },
-        remember: { label: "Remember me", type: "checkbox" },
       },
       async authorize(credentials) {
         await connectDB();
 
-        if (!credentials?.username || !credentials?.password) return null;
+        if (!credentials?.identifier || !credentials?.password) {
+          throw new Error("Please enter both identifier and password");
+        }
 
+        // username অথবা email দিয়ে ইউজার খোঁজা হচ্ছে
         const user = await User.findOne({
-          username: credentials.username,
+          $or: [
+            { username: credentials.identifier },
+            { email: credentials.identifier },
+          ],
         });
 
-        if (!user) return null;
+        if (!user) {
+          throw new Error("No user found with this username/email");
+        }
 
+        // পাসওয়ার্ড ভেরিফিকেশন (bcryptjs ব্যবহার করা হয়েছে)
         const isValid = await bcrypt.compare(credentials.password, user.password);
+        
+        if (!isValid) {
+          throw new Error("Incorrect password");
+        }
 
-        if (!isValid) return null;
-
+        // সেশনের জন্য ডাটা রিটার্ন
         return {
           id: user._id.toString(),
           username: user.username,
-          role: user.role,
+          role: user.role || "admin",
+          email: user.email || "",
         };
       },
     }),
@@ -39,40 +51,29 @@ const handler = NextAuth({
 
   session: {
     strategy: "jwt",
-    maxAge: 24 * 60 * 60, // default 1 day
+    maxAge: 1 * 24 * 60 * 60, // ১ দিন
   },
 
   pages: {
     signIn: "/login",
+    error: "/login", // এরর হলে লগইন পেজেই থাকবে
   },
 
   callbacks: {
-    async jwt({ token, user, account, profile, isNewUser }) {
+    async jwt({ token, user }) {
       if (user) {
-        token.username = user.username;
-        token.role = user.role;
+        token.username = (user as any).username;
+        token.role = (user as any).role;
       }
-
       return token;
     },
 
     async session({ session, token }) {
-      session.user.username = token.username;
-      session.user.role = token.role;
+      if (session.user) {
+        (session.user as any).username = token.username;
+        (session.user as any).role = token.role;
+      }
       return session;
-    },
-  },
-
-  cookies: {
-    sessionToken: {
-      name: `next-auth.session-token`,
-      options: {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        secure: process.env.NODE_ENV === "production",
-        maxAge: 30 * 24 * 60 * 60, // 30 days cookie
-      },
     },
   },
 
