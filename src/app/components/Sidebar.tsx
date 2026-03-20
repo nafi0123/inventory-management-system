@@ -133,8 +133,8 @@ const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
             </button>
             {openMenu === "settings" && (
               <div className="mt-1 ml-4 space-y-1 border-l-2 border-gray-100 pl-2">
-                <Link href="/settings/username" onClick={() => setIsOpen(false)} 
-                  className={`flex items-center gap-3 px-6 py-3 rounded-xl text-sm ${pathname === "/settings/username" ? activeClass : "text-gray-500 hover:text-black"}`}>
+                <Link href="/settings/profile" onClick={() => setIsOpen(false)} 
+                  className={`flex items-center gap-3 px-6 py-3 rounded-xl text-sm ${pathname === "/settings/profile" ? activeClass : "text-gray-500 hover:text-black"}`}>
                   <User size={16} /> Profile
                 </Link>
               </div>

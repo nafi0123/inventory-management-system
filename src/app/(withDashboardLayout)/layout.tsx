@@ -10,21 +10,18 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { data: session } = useSession();
   const pathname = usePathname();
+  // console.log(se)
 
-  // --- কাস্টম টাইটেল ম্যাপ (এখানে আপনার পছন্দমতো নাম বসিয়ে দিন) ---
   const titleMap: Record<string, string> = {
     "/dashboard": "Overview Dashboard",
     "/dashboard/customers/all": "Customer Directory",
     "/dashboard/customers/add": "Register New Customer",
     "/dashboard/inventory": "Product Inventory",
-    "/settings/username": "Profile Settings",
+    "/settings/profile": "Profile Settings",
   };
 
   const getPageLabel = () => {
-    // ১. যদি ম্যাপে সরাসরি নাম থাকে তবে সেটা দেখাবে
     if (titleMap[pathname]) return titleMap[pathname];
-
-    // ২. যদি ম্যাপে না থাকে তবে আগের মতো অটোমেটিক জেনারেট করবে
     const segments = pathname.split("/").filter(Boolean);
     const lastSegment = segments[segments.length - 1] || "Dashboard";
     return lastSegment.charAt(0).toUpperCase() + lastSegment.slice(1).replace(/-/g, " ");
@@ -74,7 +71,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <p className="text-[12px] font-black text-gray-900 leading-none">
                 {session?.user?.email || "admin@markgadgets.com"}
               </p>
-              <p className="text-[9px] text-amber-600 font-black uppercase mt-1 tracking-wider">Authorized Admin</p>
+                  <p className="text-[9px] text-amber-600 font-black  mt-1 tracking-wider">
+      {/* এখানে ইমেইল এর বদলে ইউজারনেম দেখাচ্ছি এবং টাইপ এরর হ্যান্ডেল করছি */}
+      {(session?.user as any)?.username || "Admin User"}
+    </p>
+              {/* <p className="text-[9px] text-amber-600 font-black uppercase mt-1 tracking-wider">{session?.user?.username || "Admin"}</p> */}
             </div>
             <div className="w-10 h-10 lg:w-11 lg:h-11 rounded-full bg-amber-50 flex items-center justify-center border-2 border-white shadow-md ring-1 ring-amber-200">
               <User size={22} className="text-amber-600" />

@@ -1,10 +1,12 @@
-import NextAuth from "next-auth";
+// src/app/api/auth/[...nextauth]/route.ts
+
+import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import connectDB from "@/app/lib/db";
 import { User } from "@/app/models/User";
 
-const handler = NextAuth({
+export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -14,12 +16,10 @@ const handler = NextAuth({
       },
       async authorize(credentials) {
         await connectDB();
-
         if (!credentials?.identifier || !credentials?.password) {
           throw new Error("Please enter both identifier and password");
         }
 
-        // username অথবা email দিয়ে ইউজার খোঁজা হচ্ছে
         const user = await User.findOne({
           $or: [
             { username: credentials.identifier },
@@ -27,18 +27,11 @@ const handler = NextAuth({
           ],
         });
 
-        if (!user) {
-          throw new Error("No user found with this username/email");
-        }
+        if (!user) throw new Error("No user found with this username/email");
 
-        // পাসওয়ার্ড ভেরিফিকেশন (bcryptjs ব্যবহার করা হয়েছে)
         const isValid = await bcrypt.compare(credentials.password, user.password);
-        
-        if (!isValid) {
-          throw new Error("Incorrect password");
-        }
+        if (!isValid) throw new Error("Incorrect password");
 
-        // সেশনের জন্য ডাটা রিটার্ন
         return {
           id: user._id.toString(),
           username: user.username,
@@ -48,36 +41,39 @@ const handler = NextAuth({
       },
     }),
   ],
-
   session: {
     strategy: "jwt",
-    maxAge: 1 * 24 * 60 * 60, // ১ দিন
+    maxAge: 1 * 24 * 60 * 60,
   },
-
   pages: {
     signIn: "/login",
-    error: "/login", // এরর হলে লগইন পেজেই থাকবে
+    error: "/login",
   },
-
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
+      // সেশন আপডেট ট্রিগার হ্যান্ডেল করা (মেইন পরিবর্তন এখানে)
+      if (trigger === "update" && session?.username) {
+        token.username = session.username;
+      }
+
       if (user) {
+        token.id = (user as any).id;
         token.username = (user as any).username;
         token.role = (user as any).role;
       }
       return token;
     },
-
     async session({ session, token }) {
       if (session.user) {
+        (session.user as any).id = token.id;
         (session.user as any).username = token.username;
         (session.user as any).role = token.role;
       }
       return session;
     },
   },
-
   secret: process.env.NEXTAUTH_SECRET,
-});
+};
 
+const handler = NextAuth(authOptions);
 export { handler as GET, handler as POST };
