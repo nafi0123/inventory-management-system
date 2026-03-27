@@ -39,3 +39,22 @@ body {
 .swal-cancel-btn:active {
   transform: scale(0.95) !important;
 }
+
+
+.swal-title-black {
+  color: black !important;
+}
+
+/* Text Black */
+.swal-text-black {
+  color: black !important;
+}
+
+/* Confirm Button Text Black */
+.swal-confirm-black-text {
+  color: black !important;
+    font-weight: 700 !important;
+
+}
+
+

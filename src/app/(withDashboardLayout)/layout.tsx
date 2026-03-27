@@ -10,7 +10,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { data: session } = useSession();
   const pathname = usePathname();
-  // console.log(se)
 
   const titleMap: Record<string, string> = {
     "/dashboard": "Overview Dashboard",
@@ -31,16 +30,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <div className="flex h-screen bg-[#f3f4f6] lg:p-4 gap-4 overflow-hidden">
       <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
 
-      <main className="flex-1 flex flex-col gap-4 min-w-0 h-full p-3 lg:p-0">
+      {/* h-screen এবং overflow-y-auto এখানে যোগ করা হয়েছে যাতে পুরো মেইন সেকশন স্ক্রল হয় যদি হেডার বড় হয় */}
+      <main className="flex-1 flex flex-col gap-4 min-w-0 h-full p-3 lg:p-0 overflow-y-auto scrollbar-hide">
         
+        {/* Header: h-16 এবং shrink-0 সরিয়ে দেওয়া হয়েছে যাতে এটি ফিক্সড না থাকে */}
         <header className="
           bg-white 
-          h-16 lg:h-18 
           rounded-2xl lg:rounded-2xl 
           flex items-center justify-between 
-          px-4 lg:px-10 
+          px-4 lg:px-10 py-4
           shadow-sm border border-gray-100 
-          shrink-0
         ">
           <div className="flex items-center gap-3">
             <button 
@@ -50,7 +49,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <Menu size={22} />
             </button>
 
-            {/* --- Dynamic Page Label with Custom Titles --- */}
             <div className="hidden lg:block leading-tight border-r border-gray-100 pr-6 mr-2">
                 <h2 className="font-black text-gray-900 text-lg uppercase tracking-tight">
                   {getPageLabel()}
@@ -69,13 +67,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-3 pl-2 lg:pl-4 border-l border-gray-100">
             <div className="text-right hidden md:block">
               <p className="text-[12px] font-black text-gray-900 leading-none">
-                {session?.user?.email || "admin@markgadgets.com"}
+                {session?.user?.email }
               </p>
-                  <p className="text-[9px] text-amber-600 font-black  mt-1 tracking-wider">
-      {/* এখানে ইমেইল এর বদলে ইউজারনেম দেখাচ্ছি এবং টাইপ এরর হ্যান্ডেল করছি */}
-      {(session?.user as any)?.username || "Admin User"}
-    </p>
-              {/* <p className="text-[9px] text-amber-600 font-black uppercase mt-1 tracking-wider">{session?.user?.username || "Admin"}</p> */}
+              <p className="text-[9px] text-amber-600 font-black mt-1 tracking-wider">
+                {(session?.user as any)?.username || "Admin User"}
+              </p>
             </div>
             <div className="w-10 h-10 lg:w-11 lg:h-11 rounded-full bg-amber-50 flex items-center justify-center border-2 border-white shadow-md ring-1 ring-amber-200">
               <User size={22} className="text-amber-600" />
@@ -83,7 +79,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <div className="flex-1 bg-white rounded-2xl lg:rounded-2xl p-5 lg:p-10 shadow-sm border border-gray-100 overflow-y-auto scrollbar-hide">
+        {/* নিচের কন্টেন্ট এরিয়া */}
+        <div className="flex-1 bg-white rounded-2xl lg:rounded-2xl p-5 lg:p-10 shadow-sm border border-gray-100">
           {children}
         </div>
       </main>
