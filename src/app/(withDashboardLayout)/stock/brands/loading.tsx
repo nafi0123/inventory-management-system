@@ -1,24 +1,21 @@
 import React from "react";
-import { LayoutGrid, Search, ArrowRight, Plus } from "lucide-react";
+import { Search, Tag, Plus } from "lucide-react";
 
-const CategoryLoading = () => {
+const BrandLoading = () => {
   return (
     <div className="space-y-6 animate-pulse">
       {/* Header Skeleton */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center text-gray-200">
-            <LayoutGrid size={24} />
+            <Tag size={24} />
           </div>
           <div className="space-y-2">
-            <div className="h-5 w-40 bg-gray-200 rounded-md"></div>
-            <div className="h-3 w-56 bg-gray-100 rounded-md"></div>
+            <div className="h-5 w-32 bg-gray-200 rounded-md"></div>
+            <div className="h-3 w-48 bg-gray-100 rounded-md"></div>
           </div>
         </div>
-        <div className="flex gap-2">
-            <div className="w-32 h-10 bg-gray-100 rounded-xl"></div>
-            <div className="w-32 h-10 bg-gray-200 rounded-xl"></div>
-        </div>
+        <div className="w-32 h-11 bg-gray-200 rounded-xl"></div>
       </div>
 
       {/* Stats & Search Skeleton */}
@@ -27,8 +24,8 @@ const CategoryLoading = () => {
              <div className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 bg-gray-100 rounded-full"></div>
         </div>
         <div className="bg-gray-200 rounded-2xl p-4 h-16 flex items-center justify-between">
-            <div className="h-3 w-24 bg-gray-300 rounded-md opacity-50"></div>
-            <div className="h-6 w-12 bg-gray-300 rounded-md"></div>
+            <div className="h-3 w-20 bg-gray-300 rounded-md opacity-50"></div>
+            <div className="h-6 w-10 bg-gray-300 rounded-md"></div>
         </div>
       </div>
 
@@ -46,22 +43,9 @@ const CategoryLoading = () => {
             <tbody className="divide-y divide-gray-50">
               {[...Array(6)].map((_, i) => (
                 <tr key={i}>
-                  <td className="px-8 py-6">
-                    <div className="h-4 w-32 bg-gray-100 rounded-lg mb-2"></div>
-                    <div className="h-3 w-20 bg-gray-50 rounded-lg"></div>
-                  </td>
-                  <td className="px-8 py-6">
-                    <div className="flex gap-2">
-                      <div className="h-6 w-16 bg-gray-50 rounded-lg"></div>
-                      <div className="h-6 w-16 bg-gray-50 rounded-lg"></div>
-                    </div>
-                  </td>
-                  <td className="px-8 py-6 text-right">
-                    <div className="flex justify-end gap-2">
-                      <div className="h-10 w-10 bg-gray-50 rounded-xl"></div>
-                      <div className="h-10 w-10 bg-gray-50 rounded-xl"></div>
-                    </div>
-                  </td>
+                  <td className="px-8 py-6"><div className="h-4 w-32 bg-gray-100 rounded-lg"></div></td>
+                  <td className="px-8 py-6"><div className="h-6 w-24 bg-gray-50 rounded-lg"></div></td>
+                  <td className="px-8 py-6 text-right"><div className="h-9 w-9 bg-gray-50 rounded-xl ml-auto"></div></td>
                 </tr>
               ))}
             </tbody>
@@ -69,11 +53,11 @@ const CategoryLoading = () => {
         </div>
         
         {/* Pagination Skeleton */}
-        <div className="px-8 py-5 bg-gray-50/50 flex items-center justify-between border-t border-gray-100 mt-auto">
-          <div className="h-3 w-28 bg-gray-200 rounded-md"></div>
+        <div className="px-8 py-5 bg-gray-50/50 flex items-center justify-between border-t border-gray-100">
+          <div className="h-3 w-24 bg-gray-200 rounded-md"></div>
           <div className="flex gap-3">
-            <div className="w-10 h-10 bg-white border border-gray-100 rounded-xl shadow-sm"></div>
-            <div className="w-10 h-10 bg-white border border-gray-100 rounded-xl shadow-sm"></div>
+            <div className="w-10 h-10 bg-white border border-gray-100 rounded-xl"></div>
+            <div className="w-10 h-10 bg-white border border-gray-100 rounded-xl"></div>
           </div>
         </div>
       </div>
@@ -81,4 +65,4 @@ const CategoryLoading = () => {
   );
 };
 
-export default CategoryLoading;
+export default BrandLoading;

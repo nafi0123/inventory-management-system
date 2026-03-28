@@ -15,6 +15,7 @@ import {
   X,
   Settings,
   User,
+  Tag, // ব্র্যান্ডের জন্য নতুন আইকন
 } from "lucide-react";
 import logo from "@/assets/img/MARK-GADGETS.png";
 import { signOut } from "next-auth/react";
@@ -30,6 +31,7 @@ const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
 
   useEffect(() => {
+    // যদি পাথে stock থাকে তবে ইনভেন্টরি মেনু অটো ওপেন হবে
     if (pathname.includes("stock")) setOpenMenu("inventory");
     if (pathname.includes("customers")) setOpenMenu("customers");
     if (pathname.includes("settings")) setOpenMenu("settings");
@@ -174,6 +176,18 @@ const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
                 >
                   <Layers size={16} />
                   Categories
+                </Link>
+
+                {/* Brands Route Added Here */}
+                <Link
+                  href="/stock/brands"
+                  onClick={() => setIsOpen(false)}
+                  className={`flex items-center gap-3 px-6 py-3 rounded-xl text-sm transition-all ${
+                    pathname === "/stock/brands" ? subActive : subNormal
+                  }`}
+                >
+                  <Tag size={16} />
+                  Brands
                 </Link>
               </div>
             )}
