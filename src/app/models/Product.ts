@@ -1,73 +1,62 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
-// ১. TypeScript Interface definition
 export interface IProduct extends Document {
   name: string;
-  universalCode: string; 
+  originalBarcode: string;
+  barcodeId: string;
   category: mongoose.Types.ObjectId; 
+  supplier: mongoose.Types.ObjectId; // vendorName এর বদলে Supplier ID
   buyingPrice: number;
   sellingPrice: number;
   stock: number;
   brand?: string;
   warranty: number; 
-  attributes: Map<string, string>; // ডাইনামিক ফিল্ডগুলো (RAM, ROM ইত্যাদি) স্টোর করার জন্য
+  attributes: Map<string, string>;
   createdAt: Date;
   updatedAt: Date;
 }
 
-// ২. Mongoose Schema definition
 const ProductSchema = new Schema<IProduct>({
   name: { 
     type: String, 
-    required: [true, "Product name is required"],
+    required: [true, "Product name is required"], 
     trim: true 
   },
-  universalCode: { 
+  originalBarcode: { 
     type: String, 
-    required: [true, "Universal Code or SKU is required"],
-    unique: true, // একই কোড দুইবার সেভ হবে না
+    required: [true, "Original Company Barcode is required"],
+    trim: true 
+  },
+  barcodeId: { 
+    type: String, 
+    required: [true, "Unique Lot ID is required"],
+    unique: true, 
     trim: true 
   }, 
+  supplier: { 
+    type: Schema.Types.ObjectId, 
+    ref: 'Supplier', 
+    required: [true, "Supplier is required"] 
+  },
   category: { 
     type: Schema.Types.ObjectId, 
-    ref: 'Category', // Category মডেলের সাথে রিলেশন
+    ref: 'Category', 
     required: [true, "Category is required"] 
   },
-  buyingPrice: { 
-    type: Number, 
-    required: [true, "Buying price is required"],
-    min: 0 
-  },
-  sellingPrice: { 
-    type: Number, 
-    required: [true, "Selling price is required"],
-    min: 0 
-  },
-  stock: { 
-    type: Number, 
-    default: 0,
-    min: 0 
-  },
-  brand: { 
-    type: String, 
-    default: "Generic" 
-  },
-  
-  // ওয়ারেন্টি পিরিয়ড (মাসের হিসেবে), ডিফল্ট ০
-  warranty: { 
-    type: Number, 
-    default: 0 
-  }, 
-
-  // ক্যাটাগরি অনুযায়ী ডাইনামিক ফিল্ডগুলো এখানে অবজেক্ট আকারে থাকবে
-  attributes: {
-    type: Map,
-    of: String,
-    default: {}
+  buyingPrice: { type: Number, required: true, min: 0 },
+  sellingPrice: { type: Number, required: true, min: 0 },
+  stock: { type: Number, default: 0, min: 0 },
+  brand: { type: String, default: "Generic" },
+  warranty: { type: Number, default: 0 }, 
+  attributes: { 
+    type: Map, 
+    of: String, 
+    default: {} 
   }
 }, { 
-  timestamps: true // অটোমেটিক createdAt এবং updatedAt ফিল্ড তৈরি করবে
+  timestamps: true 
 });
 
-// ৩. Model export (Next.js এর জন্য hot reload হ্যান্ডেল করা হয়েছে)
+ProductSchema.index({ originalBarcode: 1, barcodeId: 1 });
+
 export default mongoose.models.Product || mongoose.model<IProduct>('Product', ProductSchema);
