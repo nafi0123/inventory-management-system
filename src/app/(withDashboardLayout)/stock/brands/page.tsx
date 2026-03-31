@@ -95,7 +95,7 @@ const BrandClient = () => {
             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Organize brands by category</p>
           </div>
         </div>
-        <button onClick={() => { setIsModalOpen(true); document.body.style.overflow = "hidden"; }} className="px-5 py-2.5 bg-[#f9db3d] text-black font-bold rounded-xl shadow-sm flex items-center gap-2 text-sm transition-transform active:scale-95">
+        <button onClick={() => { setIsModalOpen(true); document.body.style.overflow = "hidden"; }} className="px-5 py-2.5 bg-[#f9db3d] hover:bg-[#e6c930]  text-black font-bold rounded-xl shadow-sm flex items-center gap-2 text-sm transition-transform active:scale-95">
           <Plus size={18} /> Add Brand
         </button>
       </div>

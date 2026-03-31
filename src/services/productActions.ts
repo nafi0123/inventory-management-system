@@ -7,10 +7,20 @@ export const getProductByCodeAction = async (code: string) => {
   try {
     await connectDB();
     const product = await Product.findOne({ 
-      $or: [{ barcodeId: code }, { originalBarcode: code }] 
+      $or: [
+        { barcodeId: code }, 
+        { originalBarcode: code },
+        { imeiNumbers: code } // Eita add kora holo IMEI check-er jonno
+      ] 
     }).sort({ createdAt: -1 }).populate("category");
-    return { success: true, data: product ? JSON.parse(JSON.stringify(product)) : null };
-  } catch (error: any) { return { success: false, message: error.message }; }
+    
+    return { 
+      success: true, 
+      data: product ? JSON.parse(JSON.stringify(product)) : null 
+    };
+  } catch (error: any) { 
+    return { success: false, message: error.message }; 
+  }
 };
 
 
@@ -97,8 +107,17 @@ export const getAllProductsAction = async (page: number = 1, limit: number = 10)
 };
 
 export const deleteProductAction = async (id: string) => {
-  try { await connectDB(); await Product.findByIdAndDelete(id); revalidatePath("/stock/products"); return { success: true }; }
-  catch (error) { return { success: false }; }
+  try { 
+    await connectDB(); 
+    await Product.findByIdAndDelete(id); 
+    
+    // নির্দিষ্ট পাথ এবং পুরো লেআউট রিভ্যালিডেট করুন যাতে ক্যাশ ক্লিয়ার হয়
+    revalidatePath("/stock/products", "page"); 
+    return { success: true }; 
+  }
+  catch (error) { 
+    return { success: false, message: "Delete failed" }; 
+  }
 };
 
 export const updateProductAction = async (id: string, updateData: any) => {
