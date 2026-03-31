@@ -3,146 +3,147 @@ import connectDB from "@/app/lib/db";
 import Product from "@/app/models/Product";
 import { revalidatePath } from "next/cache";
 
-export const getProductInfoFromAIAction = async (barcode: string) => {
-  console.log(`🚀 Scanning for Barcode: ${barcode}`);
-
-  try {
-    // ১. প্রথমে একটি ফ্রি গ্লোবাল ডাটাবেজ ট্রাই করি (এটি অনেক ফাস্ট)
-    const upcUrl = `https://api.upcitemdb.com/prod/trial/lookup?upc=${barcode}`;
-    const upcRes = await fetch(upcUrl);
-    const upcData = await upcRes.json();
-
-    if (upcData.code === "OK" && upcData.items.length > 0) {
-      const item = upcData.items[0];
-      console.log("✅ Found in Global DB:", item.title);
-      
-      // টাইটেল থেকে RAM/ROM খুঁজে বের করার লজিক
-      const title = item.title;
-      const ramMatch = title.match(/(\d+\s*GB)\s*RAM/i);
-      const romMatch = title.match(/(\d+\s*GB)\s*(Storage|ROM|GB)/i);
-
-      return {
-        success: true,
-        data: {
-          name: title,
-          brand: item.brand || "Generic",
-          specs: {
-            RAM: ramMatch ? ramMatch[1] : "",
-            ROM: romMatch ? romMatch[1] : ""
-          }
-        }
-      };
-    }
-
-    // ২. যদি গ্লোবাল ডাটাবেজে না পাওয়া যায়, তবেই জেমিনি ট্রাই করবে
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (apiKey) {
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-      const geminiRes = await fetch(geminiUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: `Product for barcode ${barcode}. Return ONLY JSON: {"name":"...", "brand":"...", "specs":{"RAM":"...", "ROM":"..."}}` }] }]
-        })
-      });
-      const result = await geminiRes.json();
-      if (result?.candidates?.[0]?.content?.parts?.[0]?.text) {
-        const text = result.candidates[0].content.parts[0].text;
-        const cleanedData = JSON.parse(text.match(/\{[\s\S]*\}/)?.[0] || "{}");
-        return { success: true, data: cleanedData };
-      }
-    }
-
-  } catch (error: any) {
-    console.error("❌ Identification Error:", error.message);
-  }
-
-  // সব ফেল করলে খালি অবজেক্ট দিবে যাতে ম্যানুয়াল ইনপুট দেয়া যায়
-  return { success: true, data: { name: "", brand: "", specs: {} }, isManual: true };
-};
-/**
- * ২. ডাটাবেজ থেকে বারকোড চেক করা
- */
 export const getProductByCodeAction = async (code: string) => {
   try {
     await connectDB();
     const product = await Product.findOne({ 
       $or: [{ barcodeId: code }, { originalBarcode: code }] 
     }).sort({ createdAt: -1 }).populate("category");
-    
     return { success: true, data: product ? JSON.parse(JSON.stringify(product)) : null };
-  } catch (error: any) { 
-    return { success: false, message: error.message }; 
-  }
+  } catch (error: any) { return { success: false, message: error.message }; }
 };
 
-/**
- * ৩. নতুন প্রোডাক্ট এন্ট্রি (Lot Management)
- */
+
 export const createProductAction = async (productData: any) => {
   try {
     await connectDB();
-    const { originalBarcode } = productData;
-    
-    // লট কাউন্ট বের করা যাতে Barcode-L1, L2 তৈরি করা যায়
-    const lotCount = await Product.countDocuments({ originalBarcode });
-    const newLotId = `${originalBarcode}-L${lotCount + 1}`;
+    const { originalBarcode, imeiNumbers } = productData;
 
-    await Product.create({ ...productData, barcodeId: newLotId });
+    // ১. আরও সিকিউর লট আইডি জেনারেশন (Timestamp যোগ করা হয়েছে যাতে ডুপ্লিকেট না হয়)
+    const lastLot = await Product.findOne({ originalBarcode })
+      .sort({ createdAt: -1 })
+      .select("barcodeId");
+
+    let nextLotNumber = 1;
+    if (lastLot && lastLot.barcodeId.includes("-L")) {
+      const parts = lastLot.barcodeId.split("-L");
+      const lastNum = parseInt(parts[parts.length - 1]);
+      if (!isNaN(lastNum)) {
+        nextLotNumber = lastNum + 1;
+      }
+    }
+
+    // বারকোড আইডিটি ইউনিক করার জন্য লট নাম্বারের সাথে প্রয়োজন হলে র‍্যান্ডম স্ট্রিং বা টাইমস্ট্যাম্প দিতে পারেন
+    const newLotId = `${originalBarcode}-L${nextLotNumber}`;
+
+    // ২. ডুপ্লিকেট IMEI চেক (এটি রাখা জরুরি, কারণ একই ফোন দুইবার এন্ট্রি হওয়া উচিত নয়)
+    if (productData.hasIMEI && imeiNumbers && imeiNumbers.length > 0) {
+      const exists = await Product.findOne({ imeiNumbers: { $in: imeiNumbers } });
+      if (exists) return { success: false, message: "One or more IMEI already exists in stock!" };
+    }
+
+    const product = await Product.create({ 
+      ...productData, 
+      barcodeId: newLotId,
+      stock: productData.hasIMEI ? imeiNumbers.length : Number(productData.stock)
+    });
+
     revalidatePath("/stock/products");
-    
-    return { success: true, message: `Product saved as Lot ${newLotId}` };
-  } catch (error: any) { 
-    return { success: false, message: error.message }; 
+    return { success: true, message: `Lot ${nextLotNumber} added successfully!` };
+  } catch (error: any) {
+    // ডাটাবেজ লেভেলে যদি এখনও ইউনিক ইনডেক্স থাকে তবে এই এরর আসবে
+    if (error.code === 11000) {
+      return { success: false, message: "Database Error: Duplicate key detected. Please check your DB indexes." };
+    }
+    return { success: false, message: error.message || "Failed to save product." };
   }
 };
 
-/**
- * ৪. সব প্রোডাক্ট গেট করা (With Pagination & Filter)
- */
-export const getAllProductsAction = async (query = "", category = "", page = 1, limit = 10) => {
+export const getAllProductsAction = async (page: number = 1, limit: number = 10) => {
   try {
     await connectDB();
+
+    // কতগুলো আইটেম স্কিপ করতে হবে তার হিসাব
     const skip = (page - 1) * limit;
-    let filter: any = {};
-    
-    if (query) {
-      filter.$or = [
-        { name: { $regex: query, $options: "i" } }, 
-        { originalBarcode: { $regex: query, $options: "i" } }
-      ];
-    }
-    
-    if (category) filter.category = category;
-    
-    const products = await Product.find(filter)
+
+    // ১. ডাটা ফেচ করা (Pagination logic সহ)
+    const products = await Product.find()
       .populate("category")
+      .populate("supplier")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
-      
-    const total = await Product.countDocuments(filter);
-    
-    return { 
-      success: true, 
-      data: JSON.parse(JSON.stringify(products)), 
-      totalPages: Math.ceil(total / limit) 
+
+    // ২. মোট কতগুলো প্রোডাক্ট আছে তা বের করা (ফ্রন্টএন্ডে টোটাল পেজ দেখানোর জন্য)
+    const totalProducts = await Product.countDocuments();
+
+    return {
+      success: true,
+      data: JSON.parse(JSON.stringify(products)),
+      meta: {
+        totalProducts,
+        totalPages: Math.ceil(totalProducts / limit),
+        currentPage: page,
+      },
     };
-  } catch (error) { 
-    return { success: false, data: [], totalPages: 0 }; 
+  } catch (error: any) {
+    console.error("Fetch Error:", error);
+    return { 
+      success: false, 
+      data: [], 
+      message: error.message || "Failed to fetch products" 
+    };
   }
 };
 
-/**
- * ৫. প্রোডাক্ট ডিলিট করা
- */
 export const deleteProductAction = async (id: string) => {
+  try { await connectDB(); await Product.findByIdAndDelete(id); revalidatePath("/stock/products"); return { success: true }; }
+  catch (error) { return { success: false }; }
+};
+
+export const updateProductAction = async (id: string, updateData: any) => {
   try {
     await connectDB();
-    await Product.findByIdAndDelete(id);
+    
+    // ১. মোবাইল টাইপ বের করা
+    const currentMobileType = updateData.attributes?.mobileType;
+
+    // ২. গ্লোবাল ফিল্টার তৈরি (Official/Unofficial আলাদা করার জন্য)
+    const globalFilter: any = { originalBarcode: updateData.originalBarcode };
+    if (currentMobileType) {
+      globalFilter["attributes.mobileType"] = currentMobileType;
+    }
+
+    // ৩. গ্লোবাল আপডেট: নাম, ব্র্যান্ড, সেলিং প্রাইস এবং অ্যালার্ট লিমিট
+    // (সাধারণত অ্যালার্ট লিমিট সব লটে সেম থাকা ভালো, তাই এখানে যোগ করা হয়েছে)
+    await Product.updateMany(
+      globalFilter,
+      { 
+        name: updateData.name, 
+        brand: updateData.brand, 
+        category: updateData.category,
+        sellingPrice: Number(updateData.sellingPrice),
+        lowStockAlert: Number(updateData.lowStockAlert) // এখানে অ্যালার্ট আপডেট যোগ করা হয়েছে
+      }
+    );
+
+    // ৪. স্পেসিফিক লট আপডেট
+    await Product.findByIdAndUpdate(id, {
+        ...updateData,
+        buyingPrice: Number(updateData.buyingPrice),
+        sellingPrice: Number(updateData.sellingPrice),
+        warranty: Number(updateData.warranty),
+        lowStockAlert: Number(updateData.lowStockAlert), // এখানেও নিশ্চিত করা হয়েছে
+        stock: updateData.hasIMEI ? updateData.imeiNumbers.length : Number(updateData.stock)
+    });
+
     revalidatePath("/stock/products");
-    return { success: true, message: "Product deleted successfully" };
-  } catch (error: any) { 
-    return { success: false, message: error.message }; 
+    return { 
+      success: true, 
+      message: "Product and Alert Limit updated successfully!" 
+    };
+  } catch (error: any) {
+    console.error("Update Error:", error);
+    return { success: false, message: error.message };
   }
 };

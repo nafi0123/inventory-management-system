@@ -57,14 +57,14 @@ const CategoryClient = () => {
   };
 
   const fetchCategories = useCallback(async () => {
-    setInitialLoading(true); // লোডিং শুরু
+    setInitialLoading(true);
     const res = await getAllCategoriesAction(searchQuery, currentPage, itemsPerPage);
     if (res.success) {
       setCategories(res.data);
       setTotalPages(res.totalPages);
       setTotalItems(res.totalItems);
     }
-    setInitialLoading(false); // লোডিং শেষ
+    setInitialLoading(false);
   }, [searchQuery, currentPage]);
 
   useEffect(() => {
@@ -72,7 +72,6 @@ const CategoryClient = () => {
     return () => clearTimeout(delayDebounceFn);
   }, [fetchCategories]);
 
-  // ... (handleEditClick, handleSaveCategory, handleDelete, closeModal ফাংশন গুলো আগের মতই থাকবে)
   const handleEditClick = (cat: any) => {
     setEditingId(cat._id);
     setCategoryName(cat.name);
@@ -82,16 +81,22 @@ const CategoryClient = () => {
   };
 
   const handleSaveCategory = async () => {
-    if (!categoryName) {
+    if (!categoryName.trim()) {
       return Swal.fire({ ...swalConfig, title: "Error", text: "Name is required", icon: "error" });
     }
+    
     setLoading(true);
+    
+    // ডাটা পাঠানোর আগে ক্যাটাগরি নেম এবং সব এক্সট্রা ফিল্ড বড় হাতের (Uppercase) করা হচ্ছে
+    const finalName = categoryName.trim().toUpperCase();
+    const finalExtraFields = extraFields.map(f => f.trim().toUpperCase()).filter(f => f !== "");
+
     const res = editingId 
-      ? await updateCategoryAction(editingId, categoryName, extraFields)
-      : await createCategoryAction(categoryName, extraFields);
+      ? await updateCategoryAction(editingId, finalName, finalExtraFields)
+      : await createCategoryAction(finalName, finalExtraFields);
 
     if (res.success) {
-      Swal.fire({ ...swalConfig, icon: "success", title: editingId ? "Updated!" : "Saved!" });
+      Swal.fire({ ...swalConfig, icon: "success", title: editingId ? "Updated!" : "Saved!", timer: 1500, showConfirmButton: false });
       closeModal();
       fetchCategories();
     } else {
@@ -113,7 +118,7 @@ const CategoryClient = () => {
       const res = await deleteCategoryAction(id);
       if (res.success) { 
         fetchCategories(); 
-        Swal.fire({ ...swalConfig, title: "Deleted!", icon: "success" }); 
+        Swal.fire({ ...swalConfig, title: "Deleted!", icon: "success", timer: 1000, showConfirmButton: false }); 
       }
     }
   };
@@ -126,7 +131,7 @@ const CategoryClient = () => {
     document.body.style.overflow = "unset";
   };
 
-  const inputClass = "w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#f9db3d]/50 transition-all font-medium";
+  const inputClass = "w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#f9db3d]/50 transition-all font-bold uppercase placeholder:normal-case";
   const labelClass = "block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1";
 
   return (
@@ -144,7 +149,7 @@ const CategoryClient = () => {
             <Link href="/stock/products" className="px-5 py-2.5 bg-black text-white font-bold rounded-xl text-xs flex items-center gap-2 hover:bg-gray-800 transition-all shadow-sm">
               View Products <ArrowRight size={14} />
             </Link>
-            <button onClick={() => { setIsModalOpen(true); document.body.style.overflow = "hidden"; }} className="px-5 py-2.5 bg-[#f9db3d] hover:bg-[#e6c930] text-black font-bold rounded-xl shadow-sm transition-all flex items-center gap-2 text-sm">
+            <button onClick={() => { setIsModalOpen(true); document.body.style.overflow = "hidden"; }} className="px-5 py-2.5 bg-[#f9db3d] hover:bg-[#e6c930] text-black font-bold rounded-xl shadow-sm transition-all flex items-center gap-2 text-sm uppercase">
               <Plus size={18} /> Add Category
             </button>
         </div>
@@ -154,7 +159,7 @@ const CategoryClient = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-          <input type="text" placeholder="Search categories..." className={`${inputClass} pl-11 h-full`} value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }} />
+          <input type="text" placeholder="Search categories..." className={`${inputClass} pl-11 h-full normal-case font-medium`} value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }} />
         </div>
         <div className="bg-black rounded-2xl p-4 flex items-center justify-between text-white border border-gray-800 shadow-md">
             <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Total Categories</span>
@@ -191,8 +196,8 @@ const CategoryClient = () => {
                       </div>
                     </td>
                     <td className="px-8 py-5 text-right space-x-2">
-                      <button onClick={() => handleEditClick(cat)} className="p-2.5 bg-gray-50 text-blue-600 rounded-xl hover:bg-blue-50 transition-all active:scale-90"><Edit3 size={16}/></button>
-                      <button onClick={() => handleDelete(cat._id)} className="p-2.5 bg-gray-50 text-red-500 rounded-xl hover:bg-red-100 transition-all active:scale-90"><Trash2 size={16}/></button>
+                      <button onClick={() => handleEditClick(cat)} className="p-2.5 bg-gray-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all active:scale-90"><Edit3 size={16}/></button>
+                      <button onClick={() => handleDelete(cat._id)} className="p-2.5 bg-gray-50 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all active:scale-90"><Trash2 size={16}/></button>
                     </td>
                   </tr>
                 ))
@@ -205,7 +210,7 @@ const CategoryClient = () => {
           </table>
         </div>
 
-        {/* Pagination */}
+        {/* Pagination Section */}
         <div className="px-8 py-5 bg-gray-50/50 flex items-center justify-between border-t border-gray-100 mt-auto">
           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Page {currentPage} of {totalPages || 1}</p>
           <div className="flex gap-3">
@@ -215,7 +220,7 @@ const CategoryClient = () => {
         </div>
       </div>
 
-      {/* Modal - Remains Same */}
+      {/* Modal Section */}
       <AnimatePresence>
         {isModalOpen && (
           <div className="fixed inset-0 z-[999] flex items-center justify-center p-4">
@@ -226,7 +231,7 @@ const CategoryClient = () => {
               <div className="space-y-6">
                 <div>
                   <label className={labelClass}>Category Name</label>
-                  <input className={inputClass} placeholder="e.g. Smart Watch" value={categoryName} onChange={(e) => setCategoryName(e.target.value)} />
+                  <input className={inputClass} placeholder="e.g. SMART WATCH" value={categoryName} onChange={(e) => setCategoryName(e.target.value.toUpperCase())} />
                 </div>
                 <div>
                   <div className="flex justify-between items-center mb-3">
@@ -236,8 +241,8 @@ const CategoryClient = () => {
                   <div className="space-y-3 max-h-52 overflow-y-auto pr-2 custom-scrollbar">
                     {extraFields.map((field, index) => (
                       <div key={index} className="flex gap-2">
-                        <input className={inputClass} value={field} onChange={(e) => { const updated = [...extraFields]; updated[index] = e.target.value; setExtraFields(updated); }} />
-                        <button onClick={() => setExtraFields(extraFields.filter((_, i) => i !== index))} className="p-3 bg-red-50 text-red-500 rounded-xl hover:bg-red-100"><Trash2 size={18}/></button>
+                        <input className={inputClass} placeholder="e.g. COLOR" value={field} onChange={(e) => { const updated = [...extraFields]; updated[index] = e.target.value.toUpperCase(); setExtraFields(updated); }} />
+                        <button onClick={() => setExtraFields(extraFields.filter((_, i) => i !== index))} className="p-3 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-colors"><Trash2 size={18}/></button>
                       </div>
                     ))}
                   </div>
