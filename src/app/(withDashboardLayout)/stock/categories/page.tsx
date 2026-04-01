@@ -114,11 +114,34 @@ const CategoryClient = () => {
       showCancelButton: true,
       confirmButtonText: "Yes, delete it!"
     });
+
     if (result.isConfirmed) {
       const res = await deleteCategoryAction(id);
-      if (res.success) { 
-        fetchCategories(); 
-        Swal.fire({ ...swalConfig, title: "Deleted!", icon: "success", timer: 1000, showConfirmButton: false }); 
+      
+      if (res.success) {
+        // লজিক: যদি বর্তমানে টেবিলে মাত্র ১টি আইটেম থাকে এবং আমরা ১ম পেজের পরে থাকি
+        if (categories.length === 1 && currentPage > 1) {
+          // ১ পেজ পিছিয়ে দাও, useEffect নিজে থেকেই fetchCategories() কল করবে
+          setCurrentPage((prev) => prev - 1);
+        } else {
+          // অন্যথায় শুধু ডাটা রিফ্রেশ করো
+          fetchCategories();
+        }
+
+        Swal.fire({ 
+          ...swalConfig, 
+          title: "Deleted!", 
+          icon: "success", 
+          timer: 1000, 
+          showConfirmButton: false 
+        }); 
+      } else {
+        Swal.fire({ 
+          ...swalConfig, 
+          title: "Error!", 
+          text: "Could not delete category.", 
+          icon: "error" 
+        });
       }
     }
   };

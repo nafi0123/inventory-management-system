@@ -1,10 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
-/**
- * Product Interface
- * brand কে string থেকে mongoose.Types.ObjectId এ পরিবর্তন করা হয়েছে 
- * যাতে এটি Brand কালেকশনের সাথে যুক্ত হতে পারে।
- */
+
 export interface IProduct extends Document {
   name: string;
   originalBarcode: string;
@@ -12,6 +8,7 @@ export interface IProduct extends Document {
   category: mongoose.Types.ObjectId; 
   supplier: mongoose.Types.ObjectId;
   brand: mongoose.Types.ObjectId; // ObjectId ব্যবহার করা হয়েছে
+  condition: 'New' | 'Used';
   buyingPrice: number;
   sellingPrice: number;
   stock: number;
@@ -49,11 +46,12 @@ const ProductSchema = new Schema<IProduct>({
     ref: 'Category', 
     required: [true, "Category is required"] 
   },
-  /**
-   * Brand Dropdown Logic:
-   * এখানে ref: 'Brand' দেওয়া হয়েছে। 
-   * ড্রপডাউনে ডাটা দেখানোর সময় আপনাকে Brand.find() করে ডাটা আনতে হবে।
-   */
+condition: {
+    type: String,
+    enum: ["New", "Used"],
+    default: "New",
+    required: true
+  },
   brand: { 
     type: Schema.Types.ObjectId, 
     ref: 'Brand', 

@@ -69,23 +69,34 @@ export const createProductAction = async (productData: any) => {
   }
 };
 
-export const getAllProductsAction = async (page: number = 1, limit: number = 10) => {
+export const getAllProductsAction = async (
+  page: number = 1, 
+  limit: number = 10, 
+  filters: any = {} // ফিল্টার প্যারামিটার যোগ করা হলো
+) => {
   try {
     await connectDB();
-
-    // কতগুলো আইটেম স্কিপ করতে হবে তার হিসাব
     const skip = (page - 1) * limit;
 
-    // ১. ডাটা ফেচ করা (Pagination logic সহ)
-    const products = await Product.find()
+    // ফিল্টার কুয়েরি তৈরি
+    let query: any = {};
+    
+    if (filters.category && filters.category !== "all") query.category = filters.category;
+    if (filters.condition && filters.condition !== "all") query.condition = filters.condition;
+    
+    // Official/Unofficial ফিল্টার (আপনার attributes-এর ভেতর থাকলে)
+    if (filters.type && filters.type !== "all") {
+      query["attributes.mobileType"] = filters.type;
+    }
+
+    const products = await Product.find(query) // কুয়েরি অ্যাপ্লাই করা হলো
       .populate("category")
       .populate("supplier")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
-    // ২. মোট কতগুলো প্রোডাক্ট আছে তা বের করা (ফ্রন্টএন্ডে টোটাল পেজ দেখানোর জন্য)
-    const totalProducts = await Product.countDocuments();
+    const totalProducts = await Product.countDocuments(query); // ফিল্টার অনুযায়ী টোটাল কাউন্ট
 
     return {
       success: true,
@@ -97,14 +108,12 @@ export const getAllProductsAction = async (page: number = 1, limit: number = 10)
       },
     };
   } catch (error: any) {
-    console.error("Fetch Error:", error);
-    return { 
-      success: false, 
-      data: [], 
-      message: error.message || "Failed to fetch products" 
-    };
+    return { success: false, data: [], message: error.message };
   }
 };
+
+
+
 
 export const deleteProductAction = async (id: string) => {
   try { 
@@ -124,17 +133,22 @@ export const updateProductAction = async (id: string, updateData: any) => {
   try {
     await connectDB();
     
-    // ১. মোবাইল টাইপ বের করা
+    // ১. মোবাইল টাইপ এবং কন্ডিশন বের করা
     const currentMobileType = updateData.attributes?.mobileType;
+    const currentCondition = updateData.condition; // 'New' অথবা 'Used'
 
-    // ২. গ্লোবাল ফিল্টার তৈরি (Official/Unofficial আলাদা করার জন্য)
-    const globalFilter: any = { originalBarcode: updateData.originalBarcode };
+    // ২. গ্লোবাল ফিল্টার তৈরি (Condition-ভিত্তিক আলাদা করার জন্য)
+    const globalFilter: any = { 
+      originalBarcode: updateData.originalBarcode,
+      condition: currentCondition // শুধু একই কন্ডিশনের প্রোডাক্টগুলো ফিল্টার করবে
+    };
+
+    // যদি মোবাইল টাইপ থাকে (Official/Unofficial), তবে সেটিও ফিল্টারে যোগ হবে
     if (currentMobileType) {
       globalFilter["attributes.mobileType"] = currentMobileType;
     }
 
-    // ৩. গ্লোবাল আপডেট: নাম, ব্র্যান্ড, সেলিং প্রাইস এবং অ্যালার্ট লিমিট
-    // (সাধারণত অ্যালার্ট লিমিট সব লটে সেম থাকা ভালো, তাই এখানে যোগ করা হয়েছে)
+    // ৩. গ্লোবাল আপডেট: (একই বারকোড + একই কন্ডিশন + একই টাইপ) হলে সব লটে আপডেট হবে
     await Product.updateMany(
       globalFilter,
       { 
@@ -142,24 +156,26 @@ export const updateProductAction = async (id: string, updateData: any) => {
         brand: updateData.brand, 
         category: updateData.category,
         sellingPrice: Number(updateData.sellingPrice),
-        lowStockAlert: Number(updateData.lowStockAlert) // এখানে অ্যালার্ট আপডেট যোগ করা হয়েছে
+        lowStockAlert: Number(updateData.lowStockAlert)
       }
     );
 
-    // ৪. স্পেসিফিক লট আপডেট
+    // ৪. নির্দিষ্ট লট আপডেট (ID অনুযায়ী)
     await Product.findByIdAndUpdate(id, {
         ...updateData,
         buyingPrice: Number(updateData.buyingPrice),
         sellingPrice: Number(updateData.sellingPrice),
         warranty: Number(updateData.warranty),
-        lowStockAlert: Number(updateData.lowStockAlert), // এখানেও নিশ্চিত করা হয়েছে
+        lowStockAlert: Number(updateData.lowStockAlert),
+        // IMEI থাকলে স্টক অটোমেটিক ক্যালকুলেট হবে, নাহলে ইনপুট ভ্যালু নিবে
         stock: updateData.hasIMEI ? updateData.imeiNumbers.length : Number(updateData.stock)
     });
 
     revalidatePath("/stock/products");
+    
     return { 
       success: true, 
-      message: "Product and Alert Limit updated successfully!" 
+      message: `Product (${currentCondition}) updated successfully!` 
     };
   } catch (error: any) {
     console.error("Update Error:", error);

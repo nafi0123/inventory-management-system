@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { Plus, X, Trash2, Package, Search, Eye, Edit3, LayoutGrid, ArrowRight, Filter, ChevronLeft, ChevronRight, BellRing, User, ShieldCheck, Tag, Cpu, Smartphone } from "lucide-react";
+import { Plus, X, Trash2, Package, Search, Eye, Edit3, LayoutGrid, ArrowRight, Filter, ChevronLeft, ChevronRight, BellRing, User, ShieldCheck, Tag, Cpu, Smartphone, Sparkles } from "lucide-react";
 import Swal from "sweetalert2";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -27,6 +27,7 @@ const ProductClient = () => {
   const [categories, setCategories] = useState<any[]>([]);
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [filteredBrands, setFilteredBrands] = useState<any[]>([]);
+  const [conditionFilter, setConditionFilter] = useState("all");
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
@@ -51,14 +52,30 @@ const ProductClient = () => {
   const [dynamicAttributes, setDynamicAttributes] = useState<any>({});
   const [mobileType, setMobileType] = useState("official");
 
+// ১. formData তে condition যোগ করা হয়েছে
   const [formData, setFormData] = useState({
-    name: "", originalBarcode: "", supplier: "", buyingPrice: "", sellingPrice: "", stock: "", brand: "Generic", warranty: 0, lowStockAlert: 5
+    name: "", 
+    originalBarcode: "", 
+    supplier: "", 
+    buyingPrice: "", 
+    sellingPrice: "", 
+    stock: "", 
+    brand: "", 
+    condition: "New", // Default value
+    warranty: 0, 
+    lowStockAlert: 5
   });
 
+  // ২. fetchData তে filters পাঠানো হচ্ছে (সার্ভার সাইড ফিল্টারিং এর জন্য)
   const fetchData = useCallback(async () => {
     setInitialLoading(true);
     const [pRes, cRes, sRes] = await Promise.all([
-      getAllProductsAction(currentPage, itemsPerPage), 
+      // getAllProductsAction এ filters অবজেক্ট পাঠানো হয়েছে
+      getAllProductsAction(currentPage, itemsPerPage, {
+        category: categoryFilter,
+        condition: conditionFilter,
+        type: typeFilter
+      }), 
       getAllCategoriesAction("", 1, 100), 
       getAllSuppliersAction()
     ]);
@@ -72,22 +89,30 @@ const ProductClient = () => {
     if (cRes.success) setCategories(cRes.data);
     if (sRes.success) setSuppliers(sRes.data);
     setInitialLoading(false);
-  }, [currentPage]);
+  }, [currentPage, categoryFilter, conditionFilter, typeFilter]); // Dependency list updated
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  // ৩. filteredProducts লজিক (Client-side useMemo)
   const filteredProducts = useMemo(() => {
     return products.filter((p: any) => {
       const matchesSearch = p.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
                            p.barcodeId?.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesCategory = categoryFilter === "all" || p.category?._id === categoryFilter;
-      const pAttrs = p.attributes instanceof Map ? Object.fromEntries(p.attributes) : p.attributes;
-      const matchesType = typeFilter === "all" || pAttrs?.mobileType === typeFilter;
-      return matchesSearch && matchesCategory && matchesType;
-    });
-  }, [products, searchTerm, categoryFilter, typeFilter]);
+      
+      const matchesCategory = categoryFilter === "all" || (p.category?._id || p.category) === categoryFilter;
+      
+      // Condition Filter check
+      const matchesCondition = conditionFilter === "all" || p.condition === conditionFilter;
 
-const runLocalScan = async () => {
+      const pAttrs = p.attributes instanceof Map ? Object.fromEntries(p.attributes) : (p.attributes || {});
+      const matchesType = typeFilter === "all" || pAttrs?.mobileType === typeFilter;
+
+      return matchesSearch && matchesCategory && matchesCondition && matchesType;
+    });
+  }, [products, searchTerm, categoryFilter, typeFilter, conditionFilter]);
+
+  // ৪. runLocalScan (Autofill logic update)
+  const runLocalScan = async () => {
     const code = formData.originalBarcode?.trim();
     if (!code) return;
 
@@ -98,82 +123,63 @@ const runLocalScan = async () => {
     if (res.success && res.data) {
       const p = res.data;
       
-      // Basic Form Data Autofill
       setFormData({
         name: p.name || "",
         originalBarcode: p.originalBarcode || code,
         supplier: p.supplier?._id || p.supplier || "",
         buyingPrice: p.buyingPrice || "",
         sellingPrice: p.sellingPrice || "",
-        stock: "0", // Notun lot entry tai stock 0 thakbe (IMEI scan korle auto barbe)
-        brand: p.brand || "Generic",
+        stock: "0", 
+        brand: p.brand?._id || p.brand || "", 
+        condition: p.condition || "New", // Database theke condition anbe
         warranty: p.warranty || 0,
         lowStockAlert: p.lowStockAlert || 5
       });
 
-      // Category Handling
       const foundCategory = categories.find(c => c._id === (p.category?._id || p.category));
       if (foundCategory) {
         setSelectedCategory(foundCategory);
         getBrandsByCategoryAction(foundCategory._id).then(r => r.success && setFilteredBrands(r.data));
       }
 
-      // IMEI Numbers Empty Rakhlam (Apnar requirement onujayi)
-      setImeiNumbers([]); // Notun lot-er IMEI notun kore scan hobe
-      
-      // Dynamic Attributes Autofill
+      setImeiNumbers([]); 
       const pAttrs = p.attributes instanceof Map ? Object.fromEntries(p.attributes) : (p.attributes || {});
       setDynamicAttributes(pAttrs);
-      
       if(pAttrs?.mobileType) setMobileType(pAttrs.mobileType);
-
-
     }
   };
 
-const handleDelete = async (id: string) => {
-  const result = await Swal.fire({ 
-    title: "Delete Lot?", 
-    text: "Are you sure?", 
-    icon: "warning", 
-    showCancelButton: true, 
-    confirmButtonColor: "#ef4444",
-    confirmButtonText: "Yes, Delete" 
-  });
+  // ৫. handleDelete
+  const handleDelete = async (id: string) => {
+    const result = await Swal.fire({ 
+      title: "Delete Lot?", 
+      text: "Are you sure?", 
+      icon: "warning", 
+      showCancelButton: true, 
+      confirmButtonColor: "#ef4444",
+      confirmButtonText: "Yes, Delete" 
+    });
 
-  if (result.isConfirmed) {
-    const res = await deleteProductAction(id);
-    
-    if (res.success) {
-      // ১. যদি বর্তমান পেজে মাত্র ১টি ডাটা থাকে এবং আপনি ১ নম্বর পেজের পরে থাকেন
-      // তবে ডিলিট করার পর আগের পেজে চলে যান
-      if (filteredProducts.length === 1 && currentPage > 1) {
-        setCurrentPage(prev => prev - 1);
-      } else {
-        // ২. নাহলে এই পেজেই ডাটা রিফ্রেশ করুন
-        fetchData(); 
+    if (result.isConfirmed) {
+      const res = await deleteProductAction(id);
+      if (res.success) {
+        if (filteredProducts.length === 1 && currentPage > 1) {
+          setCurrentPage(prev => prev - 1);
+        } else {
+          fetchData(); 
+        }
+        Swal.fire({ title: "Deleted!", icon: "success", timer: 1000, showConfirmButton: false });
       }
-      
-      Swal.fire({ title: "Deleted!", icon: "success", timer: 1000, showConfirmButton: false });
-    } else {
-      Swal.fire("Error", "Failed to delete product", "error");
     }
-  }
-};
+  };
 
-  // CATEGORY SELECT HANDLER - Dynamic Field Logic
   const handleCategoryChange = async (catId: string) => {
     const cat = categories.find(c => c._id === catId);
     setSelectedCategory(cat);
-    
-    // Reset dynamic attributes and set keys based on Category's extraFields
     if (cat && cat.extraFields) {
       const initialAttrs: any = {};
-      cat.extraFields.forEach((field: string) => {
-        initialAttrs[field] = "";
-      });
+      cat.extraFields.forEach((field: string) => { initialAttrs[field] = ""; });
       setDynamicAttributes(initialAttrs);
-      
       const r = await getBrandsByCategoryAction(cat._id);
       setFilteredBrands(r.data || []);
     } else {
@@ -181,13 +187,21 @@ const handleDelete = async (id: string) => {
     }
   };
 
+  // ৬. openEdit (Condition load logic)
   const openEdit = (p: any) => {
     setSelectedProduct(p);
     setEditMode(true);
     setFormData({ 
-      name: p.name, originalBarcode: p.originalBarcode, supplier: p.supplier?._id || p.supplier, 
-      buyingPrice: p.buyingPrice, sellingPrice: p.sellingPrice, stock: p.stock, 
-      brand: p.brand || "Generic", warranty: p.warranty || 0, lowStockAlert: p.lowStockAlert || 5 
+      name: p.name, 
+      originalBarcode: p.originalBarcode, 
+      supplier: p.supplier?._id || p.supplier, 
+      buyingPrice: p.buyingPrice, 
+      sellingPrice: p.sellingPrice, 
+      stock: p.stock, 
+      brand: p.brand?._id || p.brand || "", 
+      condition: p.condition || "New", // Set condition in edit
+      warranty: p.warranty || 0, 
+      lowStockAlert: p.lowStockAlert || 5 
     });
     setImeiNumbers(p.imeiNumbers || []);
     setDynamicAttributes(p.attributes instanceof Map ? Object.fromEntries(p.attributes) : (p.attributes || {}));
@@ -195,18 +209,37 @@ const handleDelete = async (id: string) => {
     setSelectedCategory(cat);
     if(cat) getBrandsByCategoryAction(cat._id).then(r => setFilteredBrands(r.data || []));
     
-    const pAttrs = p.attributes instanceof Map ? Object.fromEntries(p.attributes) : p.attributes;
+    const pAttrs = p.attributes instanceof Map ? Object.fromEntries(p.attributes) : (p.attributes || {});
     if(pAttrs?.mobileType) setMobileType(pAttrs.mobileType);
     setIsModalOpen(true);
   };
 
+  // ৭. closeModal (Reset logic update)
   const closeModal = () => {
-    setIsModalOpen(false); setEditMode(false); setSelectedProduct(null); setSelectedCategory(null);
-    setImeiNumbers([]); setDynamicAttributes({}); setMobileType("official"); setFilteredBrands([]);
-    setFormData({ name: "", originalBarcode: "", supplier: "", buyingPrice: "", sellingPrice: "", stock: "", brand: "Generic", warranty: 0, lowStockAlert: 5 });
+    setIsModalOpen(false); 
+    setEditMode(false); 
+    setSelectedProduct(null); 
+    setSelectedCategory(null);
+    setImeiNumbers([]); 
+    setDynamicAttributes({}); 
+    setMobileType("official"); 
+    setFilteredBrands([]);
+    setFormData({ 
+      name: "", 
+      originalBarcode: "", 
+      supplier: "", 
+      buyingPrice: "", 
+      sellingPrice: "", 
+      stock: "", 
+      brand: "", 
+      condition: "New", // Reset to default
+      warranty: 0, 
+      lowStockAlert: 5 
+    });
     setCurrentImei("");
   };
 
+  // ৮. handleSave (Payload structure update)
   const handleSave = async () => {
     if (!formData.name || !formData.originalBarcode || !formData.supplier || !selectedCategory) {
         return Swal.fire("Error", "Required fields missing!", "error");
@@ -223,14 +256,24 @@ const handleDelete = async (id: string) => {
     }
 
     const payload = { 
-        ...formData, category: selectedCategory._id, attributes: finalAttributes, 
-        hasIMEI: isMobile || isLaptop, imeiNumbers: (isMobile || isLaptop) ? imeiNumbers : [], 
+        ...formData, 
+        category: selectedCategory._id, 
+        attributes: finalAttributes, 
+        condition: formData.condition || "New", // Final database save
+        hasIMEI: isMobile || isLaptop, 
+        imeiNumbers: (isMobile || isLaptop) ? imeiNumbers : [], 
         stock: (isMobile || isLaptop) ? imeiNumbers.length : Number(formData.stock),
     };
+    
     const res = editMode ? await updateProductAction(selectedProduct._id, payload) : await createProductAction(payload);
     setLoading(false);
-    if (res.success) { closeModal(); fetchData(); Swal.fire({ title: "Success", icon: "success", timer: 1500, showConfirmButton: false }); }
-    else { Swal.fire("Failed", res.message, "error"); }
+    if (res.success) { 
+      closeModal(); 
+      fetchData(); 
+      Swal.fire({ title: "Success", icon: "success", timer: 1500, showConfirmButton: false }); 
+    } else { 
+      Swal.fire("Failed", res.message, "error"); 
+    }
   };
 
   const inputClass = "w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#f9db3d]/50 transition-all font-bold uppercase";
@@ -250,32 +293,57 @@ const handleDelete = async (id: string) => {
         </div>
       </div>
 
-      {/* Filter Bar */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          <div className="lg:col-span-4 relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-            <input type="text" placeholder="Search..." className={`${inputClass} pl-11 h-full normal-case font-medium`} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-          </div>
-          <div className="lg:col-span-3 relative flex items-center bg-gray-50 rounded-xl px-3 border border-gray-200">
-            <Filter size={16} className="text-gray-400 mr-2" />
-            <select className="w-full bg-transparent py-2.5 text-xs font-bold uppercase outline-none" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
-                <option value="all">All Categories</option>
-                {categories.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
-            </select>
-          </div>
-          <div className="lg:col-span-3 relative flex items-center bg-gray-50 rounded-xl px-3 border border-gray-200">
-            <Package size={16} className="text-gray-400 mr-2" />
-            <select className="w-full bg-transparent py-2.5 text-xs font-bold uppercase outline-none" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
-                <option value="all">All Types</option>
-                <option value="official">Official Only</option>
-                <option value="unofficial">Unofficial Only</option>
-            </select>
-          </div>
-          <div className="lg:col-span-2 bg-black rounded-xl p-3 text-white flex flex-col justify-center text-center">
-              <span className="text-[8px] font-black uppercase opacity-60">Loaded</span>
-              <span className="text-xl font-black text-[#f9db3d] leading-none">{filteredProducts.length}</span>
-          </div>
-      </div>
+    {/* Filter Bar */}
+<div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+    {/* Search */}
+    <div className="lg:col-span-3 relative">
+      <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+      <input type="text" placeholder="Search..." className={`${inputClass} pl-11 h-full normal-case font-medium`} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+    </div>
+
+    {/* Category Filter */}
+    <div className="lg:col-span-2 relative flex items-center bg-gray-50 rounded-xl px-3 border border-gray-200">
+      <Filter size={16} className="text-gray-400 mr-2" />
+      <select className="w-full bg-transparent py-2.5 text-[10px] font-bold uppercase outline-none" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+          <option value="all">All Categories</option>
+          {categories.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
+      </select>
+    </div>
+
+    {/* Condition Filter (NEW) */}
+    <div className="lg:col-span-2 relative flex items-center bg-gray-50 rounded-xl px-3 border border-gray-200">
+      <Sparkles size={16} className="text-amber-500 mr-2" />
+      <select 
+        className="w-full bg-transparent py-2.5 text-[10px] font-bold uppercase outline-none" 
+        value={conditionFilter} // conditionFilter স্টেট ব্যবহার করুন
+        onChange={(e) => setConditionFilter(e.target.value)}
+      >
+          <option value="all">All Condition</option>
+          <option value="New">New Only</option>
+          <option value="Used">Used Only</option>
+      </select>
+    </div>
+
+    {/* Type Filter */}
+    <div className="lg:col-span-3 relative flex items-center bg-gray-50 rounded-xl px-3 border border-gray-200">
+      <Package size={16} className="text-gray-400 mr-2" />
+      <select className="w-full bg-transparent py-2.5 text-[10px] font-bold uppercase outline-none" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+          <option value="all">All Types</option>
+          <option value="official">Official Only</option>
+          <option value="unofficial">Unofficial Only</option>
+      </select>
+    </div>
+
+    {/* Count Display */}
+    <div className="lg:col-span-2 bg-black rounded-xl p-3 text-white flex flex-col justify-center text-center">
+        <span className="text-[8px] font-black uppercase opacity-60">Loaded</span>
+        <span className="text-xl font-black text-[#f9db3d] leading-none">{filteredProducts.length}</span>
+    </div>
+</div>
+
+
+
+
 
       {/* Table Section */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden min-h-[400px]">
@@ -419,8 +487,22 @@ const handleDelete = async (id: string) => {
   </div>
 </div>
 
+
+
+
 {/* THIRD GRID: Supplier Selection */}
 <div className="grid grid-cols-1 gap-4 mt-4">
+  <div>
+    <label className={labelClass}>Product Condition *</label>
+    <select 
+      className={`${inputClass} border-blue-200 focus:ring-blue-400 bg-blue-50/30`} 
+      value={formData.condition || "New"} 
+      onChange={e => setFormData({...formData, condition: e.target.value})}
+    >
+      <option value="New">Brand New</option>
+      <option value="Used"> Used / Second Hand</option>
+    </select>
+  </div>
   <div>
     <label className={labelClass}>Supplier *</label>
     <select 

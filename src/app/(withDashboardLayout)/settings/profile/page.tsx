@@ -79,7 +79,7 @@ const Profile = () => {
   const btnClass = "w-full md:w-auto px-8 py-3 bg-[#f9db3d] hover:bg-[#e6c930] text-black font-bold rounded-xl shadow-md active:scale-95 transition-all disabled:opacity-50 flex justify-center items-center";
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 pb-10 mt-2">
+    <div className="space-y-6 pb-10 mt-2">
       {/* Profile Information Card */}
       <div className="bg-white border border-gray-100 rounded-3xl p-6 md:p-8 shadow-sm transition-all duration-300">
         <div className="flex items-center gap-4 mb-8">
